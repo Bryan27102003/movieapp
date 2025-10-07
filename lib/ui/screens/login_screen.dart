@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:movieapp/core/services/api_service.dart';
+import 'package:movieapp/ui/screens/forgot_password_screen.dart'; // <-- REFERENCIA AÑADIDA
 import 'package:movieapp/ui/screens/home_screen.dart';
+import 'package:movieapp/ui/screens/register_screen.dart'; // <-- REFERENCIA AÑADIDA
+import 'package:movieapp/ui/widgets/cinepolis_logo.dart';
 
 enum ButtonState { init, loading, done, error }
 
@@ -17,10 +20,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isEmailValid = true;
   bool _isPasswordValid = true;
+  bool _isPasswordObscured = true;
   ButtonState _buttonState = ButtonState.init;
-  
-  // --- NUEVO: VARIABLE PARA GUARDAR EL MENSAJE DE ERROR ---
-  String? _errorMessage;
   
   final ApiService _apiService = ApiService();
 
@@ -41,17 +42,13 @@ class _LoginScreenState extends State<LoginScreen> {
   void _validateEmail() {
     final email = _emailController.text;
     final bool isValid = RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(email);
-    setState(() {
-      _isEmailValid = isValid;
-    });
+    if(mounted) setState(() => _isEmailValid = isValid);
   }
 
   void _validatePassword() {
     final password = _passwordController.text;
     final bool isValid = password.length >= 6;
-    setState(() {
-      _isPasswordValid = isValid;
-    });
+    if(mounted) setState(() => _isPasswordValid = isValid);
   }
   
   Future<void> _performLogin() async {
@@ -59,17 +56,11 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     
-    // --- CAMBIO: LIMPIAMOS ERRORES ANTERIORES AL INICIAR ---
-    setState(() {
-      _buttonState = ButtonState.loading;
-      _errorMessage = null; 
-    });
+    setState(() => _buttonState = ButtonState.loading);
     
     try {
       final _ = await _apiService.login(_emailController.text, _passwordController.text);
-      
       setState(() => _buttonState = ButtonState.done);
-      
       await Future.delayed(const Duration(milliseconds: 1500));
       
       if (mounted) {
@@ -78,25 +69,23 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
-
     } catch (e) {
-      // --- CAMBIO: GUARDAMOS EL ERROR EN NUESTRA VARIABLE DE ESTADO ---
       final errorMessage = e.toString().replaceAll("Exception: ", "");
-      setState(() {
-        _buttonState = ButtonState.error;
-        _errorMessage = errorMessage;
-      });
+      setState(() => _buttonState = ButtonState.error);
       
-      // Ya no necesitamos la SnackBar, nuestro texto en la UI es mejor.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
       
       await Future.delayed(const Duration(seconds: 3));
 
-      // Reseteamos el estado para que el usuario pueda intentar de nuevo
       if (mounted) {
-        setState(() {
-          _buttonState = ButtonState.init;
-          _errorMessage = null;
-        });
+        setState(() => _buttonState = ButtonState.init);
       }
     }
   }
@@ -108,106 +97,179 @@ class _LoginScreenState extends State<LoginScreen> {
     final bool isFormValid = _isEmailValid && _isPasswordValid && _emailController.text.isNotEmpty && _passwordController.text.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1D1D27),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(height: MediaQuery.of(context).size.height * 0.15), 
-              const Text(
-                'MovieApp',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 48.0),
-              
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Email',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                  prefixIcon: const Icon(Icons.email_outlined, color: Colors.white70),
-                  errorText: _emailController.text.isNotEmpty && !_isEmailValid ? 'Formato de email incorrecto' : null, 
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const CinepolisLogo(size: 120),
+                const SizedBox(height: 24.0),
+                Text(
+                  'Bienvenido',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 16.0),
-
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Contraseña',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                  prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
-                  errorText: _passwordController.text.isNotEmpty && !_isPasswordValid ? 'Mínimo 6 caracteres' : null,
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                const SizedBox(height: 8),
+                Text(
+                  'Inicia sesión para continuar',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).textTheme.bodySmall?.color),
                 ),
-              ),
-              const SizedBox(height: 24.0),
+                const SizedBox(height: 32.0),
+                
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'Email',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    errorText: _emailController.text.isNotEmpty && !_isEmailValid ? 'Formato de email incorrecto' : null, 
+                  ),
+                ),
+                const SizedBox(height: 16.0),
 
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeIn,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: isFormValid ? _performLogin : null, 
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDone ? Colors.green : (isError ? Colors.red : const Color(0xFFE50914)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _isPasswordObscured,
+                  decoration: InputDecoration(
+                    hintText: 'Contraseña',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    errorText: _passwordController.text.isNotEmpty && !_isPasswordValid ? 'Mínimo 6 caracteres' : null,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPasswordObscured = !_isPasswordObscured;
+                        });
+                      },
                     ),
                   ),
-                  child: buildButtonChild(), 
                 ),
-              ),
-              
-              // --- NUEVO: WIDGET PARA MOSTRAR EL MENSAJE DE ERROR ---
-              const SizedBox(height: 16.0),
-              AnimatedOpacity(
-                // Animamos la opacidad para que el texto aparezca y desaparezca suavemente
-                duration: const Duration(milliseconds: 300),
-                opacity: _errorMessage != null ? 1.0 : 0.0,
-                child: Text(
-                  // Mostramos el mensaje de error, o un texto vacío si no hay error
-                  _errorMessage ?? '',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                const SizedBox(height: 16.0),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
+                      );
+                    },
+                    child: Text(
+                      '¿Olvidaste tu contraseña?',
+                       style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16.0),
+
+                SizedBox(
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: isFormValid && _buttonState == ButtonState.init ? _performLogin : null, 
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDone ? Colors.green : (isError ? Colors.red : Theme.of(context).colorScheme.primary),
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(scale: animation, child: child),
+                        );
+                      },
+                      child: buildButtonChild(),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 24.0),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("¿No tienes una cuenta?", style: Theme.of(context).textTheme.bodyMedium),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                        );
+                      },
+                      child: Text(
+                        'Crear cuenta',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              ],
+            ),
           ),
         ),
       ),
     );
   }
   
+  // --- CAMBIO: AJUSTAMOS EL ESTILO DEL ÍCONO CIRCULAR PARA QUE NO SEA OPACO ---
   Widget buildButtonChild() {
     if (_buttonState == ButtonState.loading) {
-      return const CircularProgressIndicator(color: Colors.white, strokeWidth: 2);
-    } 
-    else if (_buttonState == ButtonState.done) {
-      return const Text("¡Éxito!", style: TextStyle(fontSize: 18, color: Colors.white));
-    } 
-    // --- CAMBIO: TEXTO DEL BOTÓN EN CASO DE ERROR ---
-    else if (_buttonState == ButtonState.error) {
-      return const Text("Reintentar", style: TextStyle(fontSize: 18, color: Colors.white));
-    } 
-    else {
+      return const SizedBox(
+        key: ValueKey('loading'),
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+      );
+    } else if (_buttonState == ButtonState.done) {
+      return Row(
+        key: const ValueKey('done'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Colors.white, // <-- CAMBIO: Color sólido
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check, size: 18, color: Colors.green), // <-- CAMBIO: Icono con color de contraste
+          ),
+          const SizedBox(width: 8),
+          const Text("¡Éxito!", style: TextStyle(fontSize: 18, color: Colors.white)),
+        ],
+      );
+    } else if (_buttonState == ButtonState.error) {
+      return Row(
+        key: const ValueKey('error'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Colors.white, // <-- CAMBIO: Color sólido
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.close, size: 18, color: Colors.red), // <-- CAMBIO: Icono con color de contraste
+          ),
+          const SizedBox(width: 8),
+          const Text("Reintentar", style: TextStyle(fontSize: 18, color: Colors.white)),
+        ],
+      );
+    } else {
       return const Text(
         'Iniciar Sesión',
+        key: ValueKey('init'),
         style: TextStyle(fontSize: 18, color: Colors.white),
       );
     }
   }
 }
+
